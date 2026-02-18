@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-02-18
 
 ### Added
+
 - Initial release of Merge Guardian CLI.
 - AI-powered PR risk analysis.
 - Deterministic risk scoring engine.
