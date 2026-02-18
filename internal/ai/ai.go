@@ -23,8 +23,8 @@ func NewAIClient(provider Provider, apiKey string) (AIClient, error) {
 		return NewOpenAIClient(apiKey), nil
 	case ProviderGemini:
 		return NewGeminiClient(apiKey), nil
-	// case ProviderAnthropic:
-	// 	return NewAnthropicClient(apiKey), nil // Will be implemented later
+	case ProviderAnthropic:
+		return NewAnthropicClient(apiKey), nil
 	default:
 		return nil, fmt.Errorf("unsupported AI provider: %s", provider)
 	}

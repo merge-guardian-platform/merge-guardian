@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/google/generative-ai-go v0.20.1
 	github.com/google/go-github/v58 v58.0.0
+	github.com/liushuangls/go-anthropic/v2 v2.17.0
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/oauth2 v0.35.0
