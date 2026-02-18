@@ -142,8 +142,3 @@ Contributions are welcome! Please refer to the `CODEOWNERS` file for ownership d
 ## License
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
-## Code Owners
-All code in this repository is currently owned by @iamvirul.
-```
-* @iamvirul
-```
