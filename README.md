@@ -3,27 +3,27 @@
 ## Project Name: "Merge Guardian AI"
 _A GitHub Workflow + AI Integration for Intelligent Merge Management_
 
-## 🎯 Executive Summary
+## Executive Summary
 Merge Guardian AI is an enterprise solution that combines GitHub's native merge queue capabilities with custom AI-powered conflict prediction and resolution. It transforms the "4 PM Friday merge hell" into a smooth, automated, and predictable deployment pipeline. This CLI tool provides the core intelligence for this system, integrating with various AI providers to offer predictive insights and management recommendations.
 
 ---
 
-## 🚀 Why Merge Guardian? (vs GitHub Native)
+## Why Merge Guardian? (vs GitHub Native)
 
 GitHub is excellent at **reporting the present**. Merge Guardian is designed to **predict the future**.
 
 | Feature | GitHub Native | Merge Guardian AI |
 | :--- | :--- | :--- |
-| **Conflict Detection** | ✅ Reactive (Only detects current git conflicts) | ✅ **Predictive** (Analyzes future risk based on open/recent PRs) |
-| **Semantic Analysis** | ❌ No (Text-based diffs only) | ✅ **Yes** (Detects logic breaks, signature changes, API shifts) |
-| **Risk Scoring** | ❌ None | ✅ **Deterministic + AI Score** (0-100% Risk Probability) |
-| **Refactor Safety** | ❌ "Looks fine to me" | ✅ **Risky Refactor Detection** (Flags mass renames/moves) |
-| **Hotspot Detection** | ❌ None | ✅ **Hotspot Tracking** (Identifies high-churn/fragile files) |
-| **Merge Strategy** | ⚠ Primitive (First-in-first-out) | ✅ **Intelligent** (Suggests optimal merge order to minimize breaks) |
+| **Conflict Detection** | Reactive (Only detects current git conflicts) | **Predictive** (Analyzes future risk based on open/recent PRs) |
+| **Semantic Analysis** | No (Text-based diffs only) | **Yes** (Detects logic breaks, signature changes, API shifts) |
+| **Risk Scoring** | None | **Deterministic + AI Score** (0-100% Risk Probability) |
+| **Refactor Safety** | "Looks fine to me" | **Risky Refactor Detection** (Flags mass renames/moves) |
+| **Hotspot Detection** | None | **Hotspot Tracking** (Identifies high-churn/fragile files) |
+| **Merge Strategy** | Primitive (First-in-first-out) | **Intelligent** (Suggests optimal merge order to minimize breaks) |
 
 ---
 
-## 🧠 Intelligence Levels
+## Intelligence Levels
 
 Merge Guardian operates on three levels of intelligence to protect your main branch:
 
@@ -71,7 +71,7 @@ This repository contains the Go-based CLI tool that serves as the "Custom AI Lay
 ### Installation
 Clone the repository:
 ```bash
-git clone https://github.com/iamvirul/merge-guardian.git
+git clone https://github.com/merge-guardian-platform/merge-guardian.git
 cd merge-guardian
 ```
 
