@@ -34,8 +34,8 @@ func NewGeminiClient(apiKey string) *GeminiClient {
 		panic(fmt.Sprintf("Failed to create Gemini client: %v", err))
 	}
 
-	// Use a generative model, e.g., "gemini-pro"
-	model := newGeminiGenerativeModelFunc(client, "gemini-pro")
+	// Use a generative model, e.g., "gemini-2.5-flash"
+	model := newGeminiGenerativeModelFunc(client, "gemini-2.5-flash")
 
 	return &GeminiClient{
 		model: model,
