@@ -1,6 +1,9 @@
 package risk
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 var KnownHotspots = []string{
 	"package.json",
@@ -13,9 +16,37 @@ var KnownHotspots = []string{
 
 // IsHotspot checks if a file is a known hotspot.
 func IsHotspot(filename string) bool {
+	cleanFilename := filepath.Clean(filename)
+
 	for _, h := range KnownHotspots {
-		if strings.Contains(filename, h) {
-			return true
+		// 1. Check if the rule is intended for a directory (ends with /)
+		isDirRule := strings.HasSuffix(h, "/")
+		cleanRule := filepath.Clean(h)
+
+		if isDirRule {
+			// Directory Match:
+			// "config/" should match "config/db.js" but NOT "my-config/db.js"
+			// The clean filename must start with the clean rule + separator, OR be the directory itself.
+			if strings.HasPrefix(cleanFilename, cleanRule+string(filepath.Separator)) || cleanFilename == cleanRule {
+				return true
+			}
+		} else {
+			// File Match:
+			// If rule has no path separators (e.g. "package.json"), match filename base.
+			if !strings.Contains(h, "/") && !strings.Contains(h, "\\") {
+				if filepath.Base(cleanFilename) == cleanRule {
+					return true
+				}
+			} else {
+				// If rule has path separators (e.g. "src/config.js"), match exact suffix with boundary.
+				// "app/src/config.js" matches "src/config.js".
+				// "src/config.js" matches "src/config.js".
+				if strings.HasSuffix(cleanFilename, cleanRule) {
+					if cleanFilename == cleanRule || strings.HasSuffix(cleanFilename, string(filepath.Separator)+cleanRule) {
+						return true
+					}
+				}
+			}
 		}
 	}
 	return false
