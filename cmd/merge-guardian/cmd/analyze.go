@@ -1,0 +1,238 @@
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"strings"
+
+	"merge-guardian/internal/ai"
+	"merge-guardian/internal/github"
+
+	ghlib "github.com/google/go-github/v58/github" // Alias for external github package
+	"github.com/spf13/cobra"
+)
+
+// GitHubClient is an interface for GitHub API interactions, allowing for mocking in tests.
+type GitHubClient interface {
+	GetPullRequest(owner, repo string, prNumber int) (*ghlib.PullRequest, error)
+	GetPullRequestFiles(owner, repo string, prNumber int) ([]*ghlib.CommitFile, error)
+	GetRecentMergedPRs(owner, repo, targetBranch string) ([]*ghlib.PullRequest, error)
+	GetOpenPRs(owner, repo, targetBranch string) ([]*ghlib.PullRequest, error)
+}
+
+// AIClient is an interface for AI service interactions, allowing for mocking in tests.
+type AIClient interface {
+	GetConflictPrediction(prompt string) (string, error)
+}
+
+// realGitHubClient implements the GitHubClient interface using the actual GitHub client.
+type realGitHubClient struct {
+	*github.Client
+}
+
+// realAIClient implements the AIClient interface using the actual AI client.
+type realAIClient struct {
+	ai.AIClient
+}
+
+var (
+	githubClient GitHubClient
+	aiClient     AIClient
+)
+
+// logFatalf is a package-level function variable that can be overridden for testing.
+// Kept for backward compatibility if needed, but we will prefer returning errors.
+var logFatalf = log.Fatalf
+
+// NewAnalyzeCmd creates and returns a new Cobra command for analysis.
+func NewAnalyzeCmd() *cobra.Command {
+	analyzeCmd := &cobra.Command{
+		Use:   "analyze",
+		Short: "Analyze GitHub resources with AI",
+		Long:  `Analyze GitHub pull requests and other resources using AI for predictive insights.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Please specify a subcommand: pr")
+		},
+	}
+	analyzeCmd.AddCommand(NewPrCmd())
+	return analyzeCmd
+}
+
+// NewPrCmd creates and returns a new Cobra subcommand for PR analysis.
+func NewPrCmd() *cobra.Command {
+	prCmd := &cobra.Command{
+		Use:   "pr",
+		Short: "Analyze a Pull Request for potential conflicts",
+		Long:  `Analyzes a given Pull Request using AI to predict potential merge conflicts and suggest strategies.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get flag values from the command
+			githubOwner, _ := cmd.Flags().GetString("owner")
+			githubRepo, _ := cmd.Flags().GetString("repo")
+			prNumber, _ := cmd.Flags().GetInt("pr-number")
+			githubToken, _ := cmd.Flags().GetString("github-token")
+			aiAPIKey, _ := cmd.Flags().GetString("ai-api-key")
+			aiProviderStr, _ := cmd.Flags().GetString("ai-provider")
+			aiProvider := ai.Provider(aiProviderStr)
+
+			log.Printf("Starting analysis for PR #%d in %s/%s using provider %s", prNumber, githubOwner, githubRepo, aiProvider)
+
+			// Initialize real GitHub client if not already injected (e.g., for testing)
+			if githubClient == nil {
+				githubClient = &realGitHubClient{github.NewClient(githubToken)}
+			}
+
+			// Initialize real AI client if not already injected (e.g., for testing)
+			if aiClient == nil {
+				var err error
+				aiClient, err = ai.NewAIClient(aiProvider, aiAPIKey)
+				if err != nil {
+					return fmt.Errorf("error creating AI client: %v", err)
+				}
+			}
+
+			// 1. Get Current PR Details
+			currentPR, err := githubClient.GetPullRequest(githubOwner, githubRepo, prNumber)
+			if err != nil {
+				return fmt.Errorf("error getting current PR details: %v", err)
+			}
+			if currentPR.Base == nil || currentPR.Base.Ref == nil {
+				return fmt.Errorf("could not determine target branch for PR #%d: currentPR.Base is %v, currentPR.Base.Ref is %v", prNumber, currentPR.Base, currentPR.Base.Ref)
+			}
+			targetBranch := *currentPR.Base.Ref
+
+			// 2. Get Files Changed in Current PR
+			prFiles, err := githubClient.GetPullRequestFiles(githubOwner, githubRepo, prNumber)
+			if err != nil {
+				return fmt.Errorf("error getting PR files: %v", err)
+			}
+			var changedFiles []string
+			for _, file := range prFiles {
+				if file.Filename != nil {
+					changedFiles = append(changedFiles, *file.Filename)
+				}
+			}
+
+			// 3. Get Recently Merged PRs
+			recentMerges, err := githubClient.GetRecentMergedPRs(githubOwner, githubRepo, targetBranch)
+			if err != nil {
+				return fmt.Errorf("error getting recent merged PRs: %v", err)
+			}
+			recentMergesJSON, _ := json.MarshalIndent(simplifyPRs(recentMerges), "", "  ")
+
+			// 4. Get Currently Open PRs
+			openPRs, err := githubClient.GetOpenPRs(githubOwner, githubRepo, targetBranch)
+			if err != nil {
+				return fmt.Errorf("error getting open PRs: %v", err)
+			}
+			openPRsJSON, _ := json.MarshalIndent(simplifyPRs(openPRs), "", "  ")
+
+			// Construct AI Prompt
+			prTitle := ""
+			if currentPR.Title != nil {
+				prTitle = *currentPR.Title
+			}
+
+			prompt := buildPredictiveConflictAnalyzerPrompt(
+				prNumber,
+				prTitle,
+				targetBranch,
+				changedFiles,
+				string(recentMergesJSON),
+				string(openPRsJSON),
+			)
+
+			// Use the injected AI client
+			// Get AI Conflict Prediction
+			prediction, err := aiClient.GetConflictPrediction(prompt)
+			if err != nil {
+				return fmt.Errorf("error getting AI conflict prediction: %v", err)
+			}
+
+			fmt.Println("\n--- AI Conflict Prediction Result ---")
+			fmt.Println(prediction)
+			fmt.Println("--- End AI Conflict Prediction Result ---")
+			return nil
+		},
+	}
+
+	prCmd.Flags().StringP("owner", "o", "", "GitHub repository owner")
+	prCmd.Flags().StringP("repo", "r", "", "GitHub repository name")
+	prCmd.Flags().IntP("pr-number", "p", 0, "Pull Request number")
+	prCmd.Flags().StringP("github-token", "g", "", "GitHub Personal Access Token")
+	prCmd.Flags().StringP("ai-api-key", "k", "", "AI Service API Key (OpenAI, Gemini, Anthropic)")
+	prCmd.Flags().StringP("ai-provider", "i", string(ai.ProviderOpenAI), "AI Service Provider (openai, gemini, anthropic)")
+
+	prCmd.MarkFlagRequired("owner")
+	prCmd.MarkFlagRequired("repo")
+	prCmd.MarkFlagRequired("pr-number")
+	prCmd.MarkFlagRequired("github-token")
+	prCmd.MarkFlagRequired("ai-api-key")
+	return prCmd
+}
+
+// simplifyPRs extracts essential information from GitHub PR objects for the AI prompt.
+func simplifyPRs(prs []*ghlib.PullRequest) []map[string]interface{} {
+	var simplified []map[string]interface{}
+	for _, pr := range prs {
+		if pr.Number != nil && pr.Title != nil {
+			simplified = append(simplified, map[string]interface{}{
+				"number": *pr.Number,
+				"title":  *pr.Title,
+				// Optionally add more fields if the AI needs them
+			})
+		}
+		if pr.Base != nil && pr.Base.Ref != nil { // Add this check for safety
+			simplified[len(simplified)-1]["base_ref"] = *pr.Base.Ref
+		}
+	}
+	return simplified
+}
+
+// buildPredictiveConflictAnalyzerPrompt constructs the AI prompt based on the user's template.
+func buildPredictiveConflictAnalyzerPrompt(
+	prNum int,
+	prTitle string,
+	targetBranch string,
+	changedFiles []string,
+	recentMergesJSON string,
+	openPRsJSON string,
+) string {
+	filesList := "-\n"
+	if len(changedFiles) > 0 {
+		filesList = "- " + strings.Join(changedFiles, "\n- ")
+	}
+
+	promptTemplate := `You are Merge Guardian AI, an expert in analyzing code conflicts and predicting merge issues.
+
+Given the following context:
+- Current PR: %[1]d "%[2]s" targeting branch: %[3]s
+- Files changed:
+%[4]s
+- Recently merged PRs (last 24 hours):
+%[5]s
+- Currently open PRs targeting same branch:
+%[6]s
+
+Task:
+1. Analyze the files changed in this PR against the recently merged and currently open PRs
+2. Identify potential merge conflicts with 3 levels of severity:
+   - 🔴 HIGH: Same files, overlapping line ranges
+   - 🟡 MEDIUM: Same files, different sections but related logic
+   - 🟢 LOW: Different files but touching related modules
+3. For each potential conflict, explain WHY they might conflict
+4. Suggest the optimal merge order strategy
+
+Format the response as JSON for integration with GitHub Actions.
+Include a human-readable summary for PR comments.
+`
+	return fmt.Sprintf(
+		promptTemplate,
+		prNum,
+		prTitle,
+		targetBranch,
+		filesList,
+		recentMergesJSON,
+		openPRsJSON,
+	)
+}

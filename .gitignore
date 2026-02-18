@@ -1,0 +1,27 @@
+# Binaries for programs
+*.exe
+*.darwin-amd64
+*.darwin-arm64
+*.linux-amd64
+*.linux-arm64
+*.windows-amd64
+*.windows-arm64
+
+# Test coverage output
+*.out
+
+# IDEs and editors
+.idea/
+.vscode/
+.DS_Store
+
+# Dependencies
+/vendor/
+/pkg/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log

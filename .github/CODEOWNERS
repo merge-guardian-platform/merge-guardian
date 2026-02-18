@@ -1,0 +1,5 @@
+# This is the CODEOWNERS file for Merge Guardian AI.
+# It specifies who is responsible for code in different parts of the repository.
+
+# Set @iamvirul as the code owner for the entire codebase.
+* @iamvirul
