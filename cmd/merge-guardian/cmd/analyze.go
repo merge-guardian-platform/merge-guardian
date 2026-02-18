@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"merge-guardian/internal/ai"
 	"merge-guardian/internal/github"
+	"merge-guardian/internal/risk"
 
 	ghlib "github.com/google/go-github/v58/github" // Alias for external github package
 	"github.com/spf13/cobra"
@@ -127,6 +129,12 @@ func NewPrCmd() *cobra.Command {
 			}
 			openPRsJSON, _ := json.MarshalIndent(simplifyPRs(openPRs), "", "  ")
 
+			// 5. Deterministic Risk Scoring (Level 2 Intelligence)
+			filesChangedCount := len(changedFiles)
+			hotspotFilesCount := risk.CountHotspots(changedFiles)
+			isCrossDirectory := risk.IsCrossDirectory(changedFiles)
+			deterministicRiskScore := risk.CalculateRiskScore(filesChangedCount, hotspotFilesCount, isCrossDirectory)
+
 			// Construct AI Prompt
 			prTitle := ""
 			if currentPR.Title != nil {
@@ -140,6 +148,7 @@ func NewPrCmd() *cobra.Command {
 				changedFiles,
 				string(recentMergesJSON),
 				string(openPRsJSON),
+				deterministicRiskScore, // Pass the calculated score
 			)
 
 			// Use the injected AI client
@@ -149,9 +158,38 @@ func NewPrCmd() *cobra.Command {
 				return fmt.Errorf("error getting AI conflict prediction: %v", err)
 			}
 
-			fmt.Println("\n--- AI Conflict Prediction Result ---")
-			fmt.Println(prediction)
-			fmt.Println("--- End AI Conflict Prediction Result ---")
+			// Parse the AI response
+			var analysisResp MergeAnalysisResponse
+			// Find the JSON block in the response (in case the AI adds markdown code blocks)
+			jsonStart := strings.Index(prediction, "{")
+			jsonEnd := strings.LastIndex(prediction, "}")
+			if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
+				jsonContent := prediction[jsonStart : jsonEnd+1]
+				if err := json.Unmarshal([]byte(jsonContent), &analysisResp); err != nil {
+					// Fallback to raw output if parsing fails, but warn the user
+					log.Printf("Warning: Failed to parse AI JSON response: %v", err)
+					fmt.Println("\n--- AI Conflict Prediction Result (Raw) ---")
+					fmt.Println(prediction)
+					return nil
+				}
+			} else {
+				log.Printf("Warning: No JSON found in AI response")
+				fmt.Println("\n--- AI Conflict Prediction Result (Raw) ---")
+				fmt.Println(prediction)
+				return nil
+			}
+
+			// Injected fields (Real Intelligence)
+			analysisResp.MergeAnalysis.AnalysisTimestampParsed = time.Now().UTC()
+			analysisResp.MergeAnalysis.AnalysisTimestamp = analysisResp.MergeAnalysis.AnalysisTimestampParsed.Format(time.RFC3339)
+
+			// Pretty print the structured result
+			outputJSON, err := json.MarshalIndent(analysisResp, "", "  ")
+			if err != nil {
+				return fmt.Errorf("error marshalling output: %v", err)
+			}
+
+			fmt.Println(string(outputJSON))
 			return nil
 		},
 	}
@@ -197,6 +235,7 @@ func buildPredictiveConflictAnalyzerPrompt(
 	changedFiles []string,
 	recentMergesJSON string,
 	openPRsJSON string,
+	deterministicRiskScore int,
 ) string {
 	filesList := "-\n"
 	if len(changedFiles) > 0 {
@@ -207,6 +246,7 @@ func buildPredictiveConflictAnalyzerPrompt(
 
 Given the following context:
 - Current PR: %[1]d "%[2]s" targeting branch: %[3]s
+- Calculated Pre-Analysis Risk Score: %[7]d/100 (Use this as a baseline, but adjust if semantic analysis reveals deeper issues)
 - Files changed:
 %[4]s
 - Recently merged PRs (last 24 hours):
@@ -222,7 +262,7 @@ Task:
    - 🟢 LOW: Different files, minimal risk.
 3. **Semantic Conflict Analysis**: Detect logical conflicts (e.g., function signature changes, dependency updates) that might check out fine in git but break runtime.
 4. **Detect Risky Refactors**: Flag large-scale renames or structural changes across many files.
-5. **Score Merge Risk**: Assign a "Merge Risk Score" (0-100%%) indicating the probability of issues.
+5. **Score Merge Risk**: Start with the baseline score (%[7]d). Explain why you increased or decreased it based on your semantic analysis.
 6. **Identify Hotspots**: Highlight files that are being touched by multiple PRs or have a history of conflict (inferred from context).
 7. **Suggest Strategy**: Recommend optimal merge order.
 
@@ -254,5 +294,6 @@ Output Format (JSON):
 		filesList, // 4
 		recentMergesJSON, // 5
 		openPRsJSON, // 6
+		deterministicRiskScore, // 7
 	)
 }
