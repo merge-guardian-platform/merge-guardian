@@ -25,12 +25,21 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Create Tag
+      - name: Create Release Branch and Tag
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+
+          VERSION=${{ github.event.inputs.version }}
+          # Create a release branch (e.g., release/v0.1.0)
+          BRANCH_NAME="release/${VERSION}"
+
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+
+          # Create and push the tag
+          git tag $VERSION
+          git push origin $VERSION
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
