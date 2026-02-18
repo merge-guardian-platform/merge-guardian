@@ -4,6 +4,7 @@
 _A GitHub Workflow + AI Integration for Intelligent Merge Management_
 
 ## Executive Summary
+
 Merge Guardian AI is an enterprise solution that combines GitHub's native merge queue capabilities with custom AI-powered conflict prediction and resolution. It transforms the "4 PM Friday merge hell" into a smooth, automated, and predictable deployment pipeline. This CLI tool provides the core intelligence for this system, integrating with various AI providers to offer predictive insights and management recommendations.
 
 ---
