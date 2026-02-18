@@ -23,7 +23,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of Merge Guardian",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("Merge Guardian version %s (commit: %s, date: %s)", version, commit, date)
+		cmd.Printf("Merge Guardian version %s (commit: %s, date: %s)\n", version, commit, date)
 	},
 }
 
