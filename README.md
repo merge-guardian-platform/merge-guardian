@@ -60,7 +60,7 @@ Merge Guardian operates on three levels of intelligence to protect your main bra
     *   Jira ticket linking (future)
     *   Metrics dashboard (future)
 
-This repository contains the Go-based CLI tool that serves as the "Custom AI Layer" and integrates with GitHub Actions.
+This repository contains the Go-based CLI tool that serves as the "Custom AI Layer". To use Merge Guardian AI in your GitHub Workflows, see [merge-guardian-workflow](https://github.com/merge-guardian-platform/merge-guardian-workflow).
 
 ## Setup
 
