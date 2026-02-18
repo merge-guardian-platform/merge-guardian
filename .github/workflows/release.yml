@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Create Release Branch and Tag
+        env:
+          RAW_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          # Strict regex validation for SemVer (vX.Y.Z or vX.Y.Z-beta.1 etc.)
+          if [[ ! "$RAW_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format '$RAW_VERSION'. Must follow vX.Y.Z (e.g., v0.1.0)"
+            exit 1
+          fi
+
+          VERSION="$RAW_VERSION"
+          BRANCH_NAME="release/$VERSION"
+
+          # Idempotent branch creation/checkout
+          if git rev-parse --verify "refs/remotes/origin/$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "Branch $BRANCH_NAME already exists on remote. Checking out..."
+            git fetch origin "$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+          elif git rev-parse --verify "$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "Branch $BRANCH_NAME already exists locally. Checking out..."
+            git checkout "$BRANCH_NAME"
+          else
+            echo "Creating branch $BRANCH_NAME..."
+            git checkout -b "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
+          fi
+
+          # Idempotent tag creation
+          if git ls-remote --exit-code --tags origin "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists on remote. Fetching..."
+            git fetch origin "refs/tags/$VERSION:refs/tags/$VERSION"
+            git checkout "$VERSION"
+          elif git rev-parse --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally. Checking out..."
+            git checkout "$VERSION"
+          else
+            echo "Creating tag $VERSION..."
+            git tag "$VERSION"
+            git push origin "$VERSION"
+          fi
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # If homebrew-tap is in a different private repo or requires higher permissions,
+          # you will need to add a CUSTOM_GITHUB_TOKEN secret and use it here.
+          # For public repos in the same organization, GITHUB_TOKEN often works
+          # depending on the fine-grained permissions.
