@@ -215,24 +215,44 @@ Given the following context:
 %[6]s
 
 Task:
-1. Analyze the files changed in this PR against the recently merged and currently open PRs
-2. Identify potential merge conflicts with 3 levels of severity:
-   - 🔴 HIGH: Same files, overlapping line ranges
-   - 🟡 MEDIUM: Same files, different sections but related logic
-   - 🟢 LOW: Different files but touching related modules
-3. For each potential conflict, explain WHY they might conflict
-4. Suggest the optimal merge order strategy
+1. **Analyze Future Conflict Risk**: Compare files changed in this PR against recently merged and currently open PRs.
+2. **Identify Severity**:
+   - 🔴 HIGH: Same files, overlapping line ranges, or complex refactors.
+   - 🟡 MEDIUM: Same files, different sections but related logic.
+   - 🟢 LOW: Different files, minimal risk.
+3. **Semantic Conflict Analysis**: Detect logical conflicts (e.g., function signature changes, dependency updates) that might check out fine in git but break runtime.
+4. **Detect Risky Refactors**: Flag large-scale renames or structural changes across many files.
+5. **Score Merge Risk**: Assign a "Merge Risk Score" (0-100%%) indicating the probability of issues.
+6. **Identify Hotspots**: Highlight files that are being touched by multiple PRs or have a history of conflict (inferred from context).
+7. **Suggest Strategy**: Recommend optimal merge order.
 
-Format the response as JSON for integration with GitHub Actions.
-Include a human-readable summary for PR comments.
+Output Format (JSON):
+{
+  "merge_analysis": {
+    "pr_number": %[1]d,
+    "risk_score": 0-100,
+    "risk_level": "HIGH|MEDIUM|LOW",
+    "potential_conflicts": [
+      {
+        "file": "path/to/file",
+        "severity": "HIGH|MEDIUM|LOW",
+        "type": "DIRECT|SEMANTIC|REFACTOR",
+        "description": "Explanation..."
+      }
+    ],
+    "hotspots": ["file1", "file2"],
+    "merge_strategy_recommendation": "...",
+    "human_readable_summary": "..."
+  }
+}
 `
 	return fmt.Sprintf(
 		promptTemplate,
 		prNum,
-		prTitle,
-		targetBranch,
-		filesList,
-		recentMergesJSON,
-		openPRsJSON,
+		prTitle, // 2
+		targetBranch, // 3
+		filesList, // 4
+		recentMergesJSON, // 5
+		openPRsJSON, // 6
 	)
 }
