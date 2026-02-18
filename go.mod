@@ -1,6 +1,6 @@
 module merge-guardian
 
-go 1.25.0
+go 1.22.0
 
 require (
 	github.com/google/generative-ai-go v0.20.1
