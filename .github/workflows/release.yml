@@ -26,20 +26,27 @@ jobs:
           go-version: "1.24"
 
       - name: Create Release Branch and Tag
+        env:
+          RAW_VERSION: ${{ github.event.inputs.version }}
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          VERSION=${{ github.event.inputs.version }}
-          # Create a release branch (e.g., release/v0.1.0)
-          BRANCH_NAME="release/${VERSION}"
+          # Strict regex validation for SemVer (vX.Y.Z or vX.Y.Z-beta.1 etc.)
+          if [[ ! "$RAW_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format '$RAW_VERSION'. Must follow vX.Y.Z (e.g., v0.1.0)"
+            exit 1
+          fi
 
-          git checkout -b $BRANCH_NAME
-          git push origin $BRANCH_NAME
+          VERSION="$RAW_VERSION"
+          BRANCH_NAME="release/$VERSION"
+
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
 
           # Create and push the tag
-          git tag $VERSION
-          git push origin $VERSION
+          git tag "$VERSION"
+          git push origin "$VERSION"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
