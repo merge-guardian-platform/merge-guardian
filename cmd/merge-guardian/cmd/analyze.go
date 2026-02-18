@@ -158,13 +158,11 @@ func NewPrCmd() *cobra.Command {
 				return fmt.Errorf("error getting AI conflict prediction: %v", err)
 			}
 
-			// Parse the AI response
+			// 6. Parse the AI response
 			var analysisResp MergeAnalysisResponse
-			// Find the JSON block in the response (in case the AI adds markdown code blocks)
-			jsonStart := strings.Index(prediction, "{")
-			jsonEnd := strings.LastIndex(prediction, "}")
-			if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
-				jsonContent := prediction[jsonStart : jsonEnd+1]
+			jsonContent := extractJSON(prediction)
+
+			if jsonContent != "" {
 				if err := json.Unmarshal([]byte(jsonContent), &analysisResp); err != nil {
 					// Fallback to raw output if parsing fails, but warn the user
 					log.Printf("Warning: Failed to parse AI JSON response: %v", err)
@@ -296,4 +294,26 @@ Output Format (JSON):
 		openPRsJSON, // 6
 		deterministicRiskScore, // 7
 	)
+}
+
+// extractJSON extracts the first valid JSON object from a string by matching braces.
+func extractJSON(s string) string {
+	start := strings.Index(s, "{")
+	if start == -1 {
+		return ""
+	}
+
+	depth := 0
+	for i := start; i < len(s); i++ {
+		if s[i] == '{' {
+			depth++
+		} else if s[i] == '}' {
+			depth--
+			if depth == 0 {
+				return s[start : i+1]
+			}
+		}
+	}
+
+	return ""
 }
