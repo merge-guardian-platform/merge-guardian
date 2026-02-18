@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"merge-guardian/internal/ai"
 	"merge-guardian/internal/github"
+	"merge-guardian/internal/risk"
 
 	ghlib "github.com/google/go-github/v58/github" // Alias for external github package
 	"github.com/spf13/cobra"
@@ -127,6 +129,13 @@ func NewPrCmd() *cobra.Command {
 			}
 			openPRsJSON, _ := json.MarshalIndent(simplifyPRs(openPRs), "", "  ")
 
+			// 5. Deterministic Risk Scoring (Level 2 Intelligence)
+			filesChangedCount := len(changedFiles)
+			hotspotFilesCount := risk.CountHotspots(changedFiles)
+			isCrossDirectory := risk.IsCrossDirectory(changedFiles)
+			hasRecentMergeConflict := len(recentMerges) > 0 // Heuristic: Recent activity implies higher risk
+			deterministicRiskScore := risk.CalculateRiskScore(filesChangedCount, hotspotFilesCount, isCrossDirectory, hasRecentMergeConflict)
+
 			// Construct AI Prompt
 			prTitle := ""
 			if currentPR.Title != nil {
@@ -140,6 +149,7 @@ func NewPrCmd() *cobra.Command {
 				changedFiles,
 				string(recentMergesJSON),
 				string(openPRsJSON),
+				deterministicRiskScore, // Pass the calculated score
 			)
 
 			// Use the injected AI client
@@ -149,9 +159,36 @@ func NewPrCmd() *cobra.Command {
 				return fmt.Errorf("error getting AI conflict prediction: %v", err)
 			}
 
-			fmt.Println("\n--- AI Conflict Prediction Result ---")
-			fmt.Println(prediction)
-			fmt.Println("--- End AI Conflict Prediction Result ---")
+			// 6. Parse the AI response
+			var analysisResp MergeAnalysisResponse
+			jsonContent := extractJSON(prediction)
+
+			if jsonContent != "" {
+				if err := json.Unmarshal([]byte(jsonContent), &analysisResp); err != nil {
+					// Fallback to raw output if parsing fails, but warn the user
+					log.Printf("Warning: Failed to parse AI JSON response: %v", err)
+					fmt.Println("\n--- AI Conflict Prediction Result (Raw) ---")
+					fmt.Println(prediction)
+					return nil
+				}
+			} else {
+				log.Printf("Warning: No JSON found in AI response")
+				fmt.Println("\n--- AI Conflict Prediction Result (Raw) ---")
+				fmt.Println(prediction)
+				return nil
+			}
+
+			// Injected fields (Real Intelligence)
+			analysisResp.MergeAnalysis.AnalysisTimestampParsed = time.Now().UTC()
+			analysisResp.MergeAnalysis.AnalysisTimestamp = analysisResp.MergeAnalysis.AnalysisTimestampParsed.Format(time.RFC3339)
+
+			// Pretty print the structured result
+			outputJSON, err := json.MarshalIndent(analysisResp, "", "  ")
+			if err != nil {
+				return fmt.Errorf("error marshalling output: %v", err)
+			}
+
+			fmt.Println(string(outputJSON))
 			return nil
 		},
 	}
@@ -197,6 +234,7 @@ func buildPredictiveConflictAnalyzerPrompt(
 	changedFiles []string,
 	recentMergesJSON string,
 	openPRsJSON string,
+	deterministicRiskScore int,
 ) string {
 	filesList := "-\n"
 	if len(changedFiles) > 0 {
@@ -207,6 +245,7 @@ func buildPredictiveConflictAnalyzerPrompt(
 
 Given the following context:
 - Current PR: %[1]d "%[2]s" targeting branch: %[3]s
+- Calculated Pre-Analysis Risk Score: %[7]d/100 (Use this as a baseline, but adjust if semantic analysis reveals deeper issues)
 - Files changed:
 %[4]s
 - Recently merged PRs (last 24 hours):
@@ -215,24 +254,67 @@ Given the following context:
 %[6]s
 
 Task:
-1. Analyze the files changed in this PR against the recently merged and currently open PRs
-2. Identify potential merge conflicts with 3 levels of severity:
-   - 🔴 HIGH: Same files, overlapping line ranges
-   - 🟡 MEDIUM: Same files, different sections but related logic
-   - 🟢 LOW: Different files but touching related modules
-3. For each potential conflict, explain WHY they might conflict
-4. Suggest the optimal merge order strategy
+1. **Analyze Future Conflict Risk**: Compare files changed in this PR against recently merged and currently open PRs.
+2. **Identify Severity**:
+   - 🔴 HIGH: Same files, overlapping line ranges, or complex refactors.
+   - 🟡 MEDIUM: Same files, different sections but related logic.
+   - 🟢 LOW: Different files, minimal risk.
+3. **Semantic Conflict Analysis**: Detect logical conflicts (e.g., function signature changes, dependency updates) that might check out fine in git but break runtime.
+4. **Detect Risky Refactors**: Flag large-scale renames or structural changes across many files.
+5. **Score Merge Risk**: Start with the baseline score (%[7]d). Explain why you increased or decreased it based on your semantic analysis.
+6. **Identify Hotspots**: Highlight files that are being touched by multiple PRs or have a history of conflict (inferred from context).
+7. **Suggest Strategy**: Recommend optimal merge order.
 
-Format the response as JSON for integration with GitHub Actions.
-Include a human-readable summary for PR comments.
+Output Format (JSON):
+{
+  "merge_analysis": {
+    "pr_number": %[1]d,
+    "risk_score": 0-100,
+    "risk_level": "HIGH|MEDIUM|LOW",
+    "potential_conflicts": [
+      {
+        "file": "path/to/file",
+        "severity": "HIGH|MEDIUM|LOW",
+        "type": "DIRECT|SEMANTIC|REFACTOR",
+        "description": "Explanation..."
+      }
+    ],
+    "hotspots": ["file1", "file2"],
+    "merge_strategy_recommendation": "...",
+    "human_readable_summary": "..."
+  }
+}
 `
 	return fmt.Sprintf(
 		promptTemplate,
 		prNum,
-		prTitle,
-		targetBranch,
-		filesList,
-		recentMergesJSON,
-		openPRsJSON,
+		prTitle, // 2
+		targetBranch, // 3
+		filesList, // 4
+		recentMergesJSON, // 5
+		openPRsJSON, // 6
+		deterministicRiskScore, // 7
 	)
+}
+
+// extractJSON extracts the first valid JSON object from a string by matching braces.
+func extractJSON(s string) string {
+	start := strings.Index(s, "{")
+	if start == -1 {
+		return ""
+	}
+
+	depth := 0
+	for i := start; i < len(s); i++ {
+		if s[i] == '{' {
+			depth++
+		} else if s[i] == '}' {
+			depth--
+			if depth == 0 {
+				return s[start : i+1]
+			}
+		}
+	}
+
+	return ""
 }

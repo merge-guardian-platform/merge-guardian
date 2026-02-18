@@ -36,7 +36,7 @@ func setupMockOpenAIServer(t *testing.T, response string, statusCode int) *httpt
 func setupMockGeminiServer(t *testing.T, response string, statusCode int) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1beta/models/gemini-pro:generateContent" {
+		if r.URL.Path != "/v1beta/models/gemini-2.5-flash:generateContent" {
 			t.Errorf("Unexpected Gemini API path: %s", r.URL.Path)
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return

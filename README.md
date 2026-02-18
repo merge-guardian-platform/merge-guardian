@@ -3,8 +3,44 @@
 ## Project Name: "Merge Guardian AI"
 _A GitHub Workflow + AI Integration for Intelligent Merge Management_
 
-## Executive Summary
+## 🎯 Executive Summary
 Merge Guardian AI is an enterprise solution that combines GitHub's native merge queue capabilities with custom AI-powered conflict prediction and resolution. It transforms the "4 PM Friday merge hell" into a smooth, automated, and predictable deployment pipeline. This CLI tool provides the core intelligence for this system, integrating with various AI providers to offer predictive insights and management recommendations.
+
+---
+
+## 🚀 Why Merge Guardian? (vs GitHub Native)
+
+GitHub is excellent at **reporting the present**. Merge Guardian is designed to **predict the future**.
+
+| Feature | GitHub Native | Merge Guardian AI |
+| :--- | :--- | :--- |
+| **Conflict Detection** | ✅ Reactive (Only detects current git conflicts) | ✅ **Predictive** (Analyzes future risk based on open/recent PRs) |
+| **Semantic Analysis** | ❌ No (Text-based diffs only) | ✅ **Yes** (Detects logic breaks, signature changes, API shifts) |
+| **Risk Scoring** | ❌ None | ✅ **Deterministic + AI Score** (0-100% Risk Probability) |
+| **Refactor Safety** | ❌ "Looks fine to me" | ✅ **Risky Refactor Detection** (Flags mass renames/moves) |
+| **Hotspot Detection** | ❌ None | ✅ **Hotspot Tracking** (Identifies high-churn/fragile files) |
+| **Merge Strategy** | ⚠ Primitive (First-in-first-out) | ✅ **Intelligent** (Suggests optimal merge order to minimize breaks) |
+
+---
+
+## 🧠 Intelligence Levels
+
+Merge Guardian operates on three levels of intelligence to protect your main branch:
+
+### Level 1: Reporting (The Basics)
+- Aggregates context from Open PRs, Recently Merged PRs, and Current Changes.
+- Provides a single view of all activity targeting the branch.
+
+### Level 2: Deterministic Risk Engine (The Rules)
+- **Hotspot Detection**: Flags changes to sensitive files (e.g., `package.json`, `migrations/`, `go.mod`).
+- **Cross-Directory Impact**: Calculates risk when changes span multiple architectural domains.
+- **Volume Analysis**: penalizes massive file changes that are hard to review.
+
+### Level 3: AI Predictive Engine (The Brain)
+- **Semantic Conflict Analysis**: "PR A changed the function signature, PR B is still calling the old one. GitHub says it merges, but it will break prod." -> **Merge Guardian catches this.**
+- **Merge Strategy**: Recommends whether to merge immediately, wait for another PR, or reorder the queue.
+
+---
 
 ## Architecture Overview
 
@@ -17,7 +53,7 @@ Merge Guardian AI is an enterprise solution that combines GitHub's native merge 
     *   Predictive conflict analysis
     *   Intelligent merge strategy recommendation
     *   Automated conflict resolution suggestions
-    *   Support for multiple AI providers (OpenAI, Google Gemini)
+    *   Support for multiple AI providers (OpenAI, Google Gemini, Anthropic)
 3.  **Integration Points**
     *   Slack/Teams notifications (future)
     *   Jira ticket linking (future)
@@ -30,7 +66,7 @@ This repository contains the Go-based CLI tool that serves as the "Custom AI Lay
 ### Prerequisites
 *   Go (version 1.22 or higher)
 *   GitHub Personal Access Token (with `repo` and `pull_requests` scopes)
-*   API Key for your chosen AI Provider (OpenAI or Google Gemini)
+*   API Key for your chosen AI Provider (OpenAI, Google Gemini, or Anthropic)
 
 ### Installation
 Clone the repository:
@@ -62,7 +98,13 @@ The primary command currently implemented is `analyze pr`.
 This command analyzes a Pull Request and uses AI to predict potential merge conflicts.
 
 ```bash
-merge-guardian analyze pr --owner <github-owner> --repo <github-repo> --pr-number <pull-request-number> --github-token <your-github-token> --ai-provider <openai|gemini> --ai-api-key <your-ai-api-key>
+merge-guardian analyze pr \
+  --owner <github-owner> \
+  --repo <github-repo> \
+  --pr-number <pull-request-number> \
+  --github-token <your-github-token> \
+  --ai-provider <openai|gemini|anthropic> \
+  --ai-api-key <your-ai-api-key>
 ```
 
 **Flags:**
@@ -70,7 +112,7 @@ merge-guardian analyze pr --owner <github-owner> --repo <github-repo> --pr-numbe
 *   `--repo`, `-r`: GitHub repository name (e.g., `hello-world`)
 *   `--pr-number`, `-p`: Pull Request number (e.g., `123`)
 *   `--github-token`, `-g`: GitHub Personal Access Token
-*   `--ai-provider`, `-i`: AI Service Provider (`openai` or `gemini`, default `openai`)
+*   `--ai-provider`, `-i`: AI Service Provider (`openai`, `gemini`, or `anthropic`, default `openai`)
 *   `--ai-api-key`, `-k`: API Key for the chosen AI Service Provider
 
 **Example in GitHub Actions (for OpenAI):**
