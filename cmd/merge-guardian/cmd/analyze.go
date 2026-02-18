@@ -133,7 +133,8 @@ func NewPrCmd() *cobra.Command {
 			filesChangedCount := len(changedFiles)
 			hotspotFilesCount := risk.CountHotspots(changedFiles)
 			isCrossDirectory := risk.IsCrossDirectory(changedFiles)
-			deterministicRiskScore := risk.CalculateRiskScore(filesChangedCount, hotspotFilesCount, isCrossDirectory)
+			hasRecentMergeConflict := len(recentMerges) > 0 // Heuristic: Recent activity implies higher risk
+			deterministicRiskScore := risk.CalculateRiskScore(filesChangedCount, hotspotFilesCount, isCrossDirectory, hasRecentMergeConflict)
 
 			// Construct AI Prompt
 			prTitle := ""

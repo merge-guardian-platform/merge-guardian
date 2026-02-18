@@ -10,7 +10,7 @@ const (
 )
 
 // CalculateRiskScore computes a deterministic risk score based on PR metadata.
-func CalculateRiskScore(filesChangedCount int, hotspotFilesCount int, isCrossDirectory bool) int {
+func CalculateRiskScore(filesChangedCount int, hotspotFilesCount int, isCrossDirectory, hasRecentMergeConflict bool) int {
 	score := float64(BaseRiskScore)
 
 	score += float64(filesChangedCount) * RiskPerFileChanged
@@ -18,6 +18,10 @@ func CalculateRiskScore(filesChangedCount int, hotspotFilesCount int, isCrossDir
 
 	if isCrossDirectory {
 		score += RiskCrossDirectory
+	}
+
+	if hasRecentMergeConflict {
+		score += RiskRecentMergeConflict
 	}
 
 	// Cap at 100
