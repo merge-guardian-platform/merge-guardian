@@ -41,12 +41,33 @@ jobs:
           VERSION="$RAW_VERSION"
           BRANCH_NAME="release/$VERSION"
 
-          git checkout -b "$BRANCH_NAME"
-          git push origin "$BRANCH_NAME"
+          # Idempotent branch creation/checkout
+          if git rev-parse --verify "refs/remotes/origin/$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "Branch $BRANCH_NAME already exists on remote. Checking out..."
+            git fetch origin "$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+          elif git rev-parse --verify "$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "Branch $BRANCH_NAME already exists locally. Checking out..."
+            git checkout "$BRANCH_NAME"
+          else
+            echo "Creating branch $BRANCH_NAME..."
+            git checkout -b "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
+          fi
 
-          # Create and push the tag
-          git tag "$VERSION"
-          git push origin "$VERSION"
+          # Idempotent tag creation
+          if git ls-remote --exit-code --tags origin "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists on remote. Fetching..."
+            git fetch origin "refs/tags/$VERSION:refs/tags/$VERSION"
+            git checkout "$VERSION"
+          elif git rev-parse --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally. Checking out..."
+            git checkout "$VERSION"
+          else
+            echo "Creating tag $VERSION..."
+            git tag "$VERSION"
+            git push origin "$VERSION"
+          fi
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
