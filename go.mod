@@ -3,9 +3,9 @@ module merge-guardian
 go 1.24.0
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.25.0
 	github.com/google/generative-ai-go v0.20.1
 	github.com/google/go-github/v58 v58.0.0
-	github.com/liushuangls/go-anthropic/v2 v2.17.0
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/oauth2 v0.35.0
@@ -31,6 +31,11 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.51.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.51.0 // indirect

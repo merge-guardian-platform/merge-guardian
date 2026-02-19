@@ -3,12 +3,14 @@ package ai
 import (
 	"context"
 
-	"github.com/liushuangls/go-anthropic/v2"
+	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
 // newAnthropicClientFunc is a package-level variable to allow mocking anthropic.NewClient in tests.
-var newAnthropicClientFunc = func(apiKey string, opts ...anthropic.ClientOption) *anthropic.Client {
-	return anthropic.NewClient(apiKey, opts...)
+var newAnthropicClientFunc = func(apiKey string, opts ...option.RequestOption) *anthropic.Client {
+	c := anthropic.NewClient(append(opts, option.WithAPIKey(apiKey))...)
+	return &c
 }
 
 // AnthropicClient provides a wrapper around the Anthropic API client.
@@ -28,20 +30,13 @@ func NewAnthropicClient(apiKey string) *AnthropicClient {
 
 // GetConflictPrediction sends a prompt to the Anthropic API (Claude) for conflict prediction.
 func (c *AnthropicClient) GetConflictPrediction(prompt string) (string, error) {
-	resp, err := c.client.CreateMessages(
-		c.ctx,
-		anthropic.MessagesRequest{
-			Model: anthropic.ModelClaude3Dot5Sonnet20241022,
-			Messages: []anthropic.Message{
-				{
-					Role: anthropic.RoleUser,
-					Content: []anthropic.MessageContent{
-						anthropic.NewTextMessageContent(prompt),
-					},
-				},
-			},
-			MaxTokens: 4000,
-		})
+	resp, err := c.client.Messages.New(c.ctx, anthropic.MessageNewParams{
+		Model:     anthropic.ModelClaude3_7Sonnet20250219,
+		MaxTokens: 4000,
+		Messages: []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
+		},
+	})
 
 	if err != nil {
 		return "", err
@@ -51,5 +46,5 @@ func (c *AnthropicClient) GetConflictPrediction(prompt string) (string, error) {
 		return "", nil
 	}
 
-	return *resp.Content[0].Text, nil
+	return resp.Content[0].Text, nil
 }
