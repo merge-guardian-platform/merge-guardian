@@ -30,7 +30,23 @@ type AIClient interface {
 
 // realGitHubClient implements the GitHubClient interface using the actual GitHub client.
 type realGitHubClient struct {
-	*intgithub.Client
+	client *intgithub.Client
+}
+
+func (r *realGitHubClient) GetPullRequest(owner, repo string, prNumber int) (*ghlib.PullRequest, error) {
+	return r.client.GetPullRequest(owner, repo, prNumber)
+}
+
+func (r *realGitHubClient) GetPullRequestFiles(owner, repo string, prNumber int) ([]*ghlib.CommitFile, error) {
+	return r.client.GetPullRequestFiles(owner, repo, prNumber)
+}
+
+func (r *realGitHubClient) GetRecentMergedPRs(owner, repo, targetBranch string) ([]*ghlib.PullRequest, error) {
+	return r.client.GetRecentMergedPRs(owner, repo, targetBranch)
+}
+
+func (r *realGitHubClient) GetOpenPRs(owner, repo, targetBranch string) ([]*ghlib.PullRequest, error) {
+	return r.client.GetOpenPRs(owner, repo, targetBranch)
 }
 
 // realAIClient implements the AIClient interface using the actual AI client.
@@ -81,7 +97,7 @@ func NewPrCmd() *cobra.Command {
 
 			// Initialize real GitHub client if not already injected (e.g., for testing)
 			if githubClient == nil {
-				githubClient = &realGitHubClient{intgithub.NewClient(githubToken)}
+				githubClient = &realGitHubClient{client: intgithub.NewClient(githubToken)}
 			}
 
 			// Initialize real AI client if not already injected (e.g., for testing)
