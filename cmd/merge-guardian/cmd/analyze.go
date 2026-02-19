@@ -49,19 +49,10 @@ func (r *realGitHubClient) GetOpenPRs(owner, repo, targetBranch string) ([]*ghli
 	return r.client.GetOpenPRs(owner, repo, targetBranch)
 }
 
-// realAIClient implements the AIClient interface using the actual AI client.
-type realAIClient struct {
-	ai.AIClient
-}
-
 var (
 	githubClient GitHubClient
 	aiClient     AIClient
 )
-
-// logFatalf is a package-level function variable that can be overridden for testing.
-// Kept for backward compatibility if needed, but we will prefer returning errors.
-var logFatalf = log.Fatalf
 
 // NewAnalyzeCmd creates and returns a new Cobra command for analysis.
 func NewAnalyzeCmd() *cobra.Command {
@@ -216,11 +207,21 @@ func NewPrCmd() *cobra.Command {
 	prCmd.Flags().StringP("ai-api-key", "k", "", "AI Service API Key (OpenAI, Gemini, Anthropic)")
 	prCmd.Flags().StringP("ai-provider", "i", string(ai.ProviderOpenAI), "AI Service Provider (openai, gemini, anthropic)")
 
-	prCmd.MarkFlagRequired("owner")
-	prCmd.MarkFlagRequired("repo")
-	prCmd.MarkFlagRequired("pr-number")
-	prCmd.MarkFlagRequired("github-token")
-	prCmd.MarkFlagRequired("ai-api-key")
+	if err := prCmd.MarkFlagRequired("owner"); err != nil {
+		log.Fatalf("Error marking flag 'owner' required: %v", err)
+	}
+	if err := prCmd.MarkFlagRequired("repo"); err != nil {
+		log.Fatalf("Error marking flag 'repo' required: %v", err)
+	}
+	if err := prCmd.MarkFlagRequired("pr-number"); err != nil {
+		log.Fatalf("Error marking flag 'pr-number' required: %v", err)
+	}
+	if err := prCmd.MarkFlagRequired("github-token"); err != nil {
+		log.Fatalf("Error marking flag 'github-token' required: %v", err)
+	}
+	if err := prCmd.MarkFlagRequired("ai-api-key"); err != nil {
+		log.Fatalf("Error marking flag 'ai-api-key' required: %v", err)
+	}
 	return prCmd
 }
 
