@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"merge-guardian/internal/ai"
-	"merge-guardian/internal/github"
+	intgithub "merge-guardian/internal/github"
 	"merge-guardian/internal/risk"
 
 	ghlib "github.com/google/go-github/v58/github" // Alias for external github package
@@ -30,7 +30,7 @@ type AIClient interface {
 
 // realGitHubClient implements the GitHubClient interface using the actual GitHub client.
 type realGitHubClient struct {
-	*github.Client
+	*intgithub.Client
 }
 
 // realAIClient implements the AIClient interface using the actual AI client.
@@ -81,7 +81,7 @@ func NewPrCmd() *cobra.Command {
 
 			// Initialize real GitHub client if not already injected (e.g., for testing)
 			if githubClient == nil {
-				githubClient = &realGitHubClient{github.NewClient(githubToken)}
+				githubClient = &realGitHubClient{intgithub.NewClient(githubToken)}
 			}
 
 			// Initialize real AI client if not already injected (e.g., for testing)
