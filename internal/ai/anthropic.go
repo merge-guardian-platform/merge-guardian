@@ -46,5 +46,10 @@ func (c *AnthropicClient) GetConflictPrediction(prompt string) (string, error) {
 		return "", nil
 	}
 
-	return resp.Content[0].Text, nil
+	block := resp.Content[0]
+	if block.Type == "text" {
+		return block.AsText().Text, nil
+	}
+
+	return "", nil
 }
