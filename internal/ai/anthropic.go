@@ -31,7 +31,7 @@ func NewAnthropicClient(apiKey string) *AnthropicClient {
 // GetConflictPrediction sends a prompt to the Anthropic API (Claude) for conflict prediction.
 func (c *AnthropicClient) GetConflictPrediction(prompt string) (string, error) {
 	resp, err := c.client.Messages.New(c.ctx, anthropic.MessageNewParams{
-		Model:     anthropic.ModelClaudeSonnet4_6,
+		Model:     anthropic.ModelClaudeSonnet4_5_20250929,
 		MaxTokens: 4000,
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
