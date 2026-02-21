@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	ghlib "github.com/google/go-github/v58/github"
+	"github.com/spf13/cobra"
 )
 
 // MockGitHubClient is a mock implementation of GitHubClient for testing.
@@ -57,23 +58,14 @@ func (m *MockAIClient) GetConflictPrediction(prompt string) (string, error) {
 	return "", nil
 }
 
-// Helper function to capture stdout
-func captureStdout(f func()) string {
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	f()
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	return buf.String()
+// Reset global variables for clean test runs
+func mustSetFlag(t *testing.T, cmd *cobra.Command, name, value string) {
+t.Helper()
+if err := cmd.Flags().Set(name, value); err != nil {
+t.Fatalf("failed to set flag %q: %v", name, err)
+}
 }
 
-// Reset global variables for clean test runs
 func resetGlobalClients() {
 	githubClient = nil
 	aiClient = nil
@@ -137,11 +129,11 @@ func TestAnalyzePRCommand_Success(t *testing.T) {
 	cmd := NewPrCmd()
 
 	// Set flags
-	cmd.Flags().Set("owner", "test-owner")
-	cmd.Flags().Set("repo", "test-repo")
-	cmd.Flags().Set("pr-number", "123")
-	cmd.Flags().Set("github-token", "test-token")
-	cmd.Flags().Set("ai-api-key", "test-key")
+	mustSetFlag(t, cmd, "owner", "test-owner")
+	mustSetFlag(t, cmd, "repo", "test-repo")
+	mustSetFlag(t, cmd, "pr-number", "123")
+	mustSetFlag(t, cmd, "github-token", "test-token")
+	mustSetFlag(t, cmd, "ai-api-key", "test-key")
 
 	// Directly call RunE with a recover block to isolate panic
 	func() {
@@ -189,11 +181,11 @@ func TestAnalyzePRCommand_GitHubError(t *testing.T) {
 	cmd := NewPrCmd()
 
 	// Set flags
-	cmd.Flags().Set("owner", "test-owner")
-	cmd.Flags().Set("repo", "test-repo")
-	cmd.Flags().Set("pr-number", "123")
-	cmd.Flags().Set("github-token", "test-token")
-	cmd.Flags().Set("ai-api-key", "test-key")
+	mustSetFlag(t, cmd, "owner", "test-owner")
+	mustSetFlag(t, cmd, "repo", "test-repo")
+	mustSetFlag(t, cmd, "pr-number", "123")
+	mustSetFlag(t, cmd, "github-token", "test-token")
+	mustSetFlag(t, cmd, "ai-api-key", "test-key")
 
 	// Expect an error return
 	log.SetOutput(new(bytes.Buffer)) // Suppress log output
@@ -243,11 +235,11 @@ func TestAnalyzePRCommand_AIError(t *testing.T) {
 	cmd := NewPrCmd()
 
 	// Set flags
-	cmd.Flags().Set("owner", "test-owner")
-	cmd.Flags().Set("repo", "test-repo")
-	cmd.Flags().Set("pr-number", "123")
-	cmd.Flags().Set("github-token", "test-token")
-	cmd.Flags().Set("ai-api-key", "test-key")
+	mustSetFlag(t, cmd, "owner", "test-owner")
+	mustSetFlag(t, cmd, "repo", "test-repo")
+	mustSetFlag(t, cmd, "pr-number", "123")
+	mustSetFlag(t, cmd, "github-token", "test-token")
+	mustSetFlag(t, cmd, "ai-api-key", "test-key")
 
 	// Expect an error return
 	log.SetOutput(new(bytes.Buffer)) // Suppress log output
@@ -268,12 +260,12 @@ func TestAnalyzePRCommand_InvalidAIProvider(t *testing.T) {
 	cmd := NewPrCmd()
 
 	// Set flags - specifically invalid AI provider
-	cmd.Flags().Set("ai-provider", "unknown")
-	cmd.Flags().Set("owner", "test-owner")
-	cmd.Flags().Set("repo", "test-repo")
-	cmd.Flags().Set("pr-number", "123")
-	cmd.Flags().Set("github-token", "test-token")
-	cmd.Flags().Set("ai-api-key", "test-key")
+	mustSetFlag(t, cmd, "ai-provider", "unknown")
+	mustSetFlag(t, cmd, "owner", "test-owner")
+	mustSetFlag(t, cmd, "repo", "test-repo")
+	mustSetFlag(t, cmd, "pr-number", "123")
+	mustSetFlag(t, cmd, "github-token", "test-token")
+	mustSetFlag(t, cmd, "ai-api-key", "test-key")
 
 
 	log.SetOutput(new(bytes.Buffer))
@@ -322,11 +314,11 @@ func TestAnalyzePRCommand_Minimal(t *testing.T) {
 	cmd := NewPrCmd()
 
 	// Set flags
-	cmd.Flags().Set("owner", "test-owner")
-	cmd.Flags().Set("repo", "test-repo")
-	cmd.Flags().Set("pr-number", "123")
-	cmd.Flags().Set("github-token", "test-token")
-	cmd.Flags().Set("ai-api-key", "test-key")
+	mustSetFlag(t, cmd, "owner", "test-owner")
+	mustSetFlag(t, cmd, "repo", "test-repo")
+	mustSetFlag(t, cmd, "pr-number", "123")
+	mustSetFlag(t, cmd, "github-token", "test-token")
+	mustSetFlag(t, cmd, "ai-api-key", "test-key")
 
 	// Directly call RunE to isolate panic
 	func() {

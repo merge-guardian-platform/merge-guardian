@@ -260,7 +260,4 @@ func TestGeminiClient_GetConflictPrediction_NoContent(t *testing.T) {
 	}
 }
 
-// Helper to check if a string contains a substring (for error messages)
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[0:len(substr)] == substr
-}
+

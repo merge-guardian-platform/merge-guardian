@@ -1,21 +1,21 @@
 package ai
 
 import (
-
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/liushuangls/go-anthropic/v2"
+	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
 // setupMockAnthropicServer creates a mock HTTP server for Anthropic API.
 func setupMockAnthropicServer(t *testing.T, response string, statusCode int) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The client appends /messages to the base URL
-		if r.URL.Path != "/messages" {
+		// The official client appends /v1/messages to the base URL (or just /messages if /v1 is base)
+		if r.URL.Path != "/v1/messages" && r.URL.Path != "/messages" {
 			t.Errorf("Unexpected Anthropic API path: %s", r.URL.Path)
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
@@ -25,11 +25,11 @@ func setupMockAnthropicServer(t *testing.T, response string, statusCode int) *ht
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		fmt.Fprint(w, response)
 	}))
 }
-
 
 func TestNewAIClient_Anthropic(t *testing.T) {
 	client, err := NewAIClient(ProviderAnthropic, "test-key")
@@ -46,7 +46,7 @@ func TestAnthropicClient_GetConflictPrediction_Success(t *testing.T) {
 		"id": "msg_123",
 		"type": "message",
 		"role": "assistant",
-		"model": "claude-3-5-sonnet-20241022",
+		"model": "claude-3-7-sonnet-20250219",
 		"content": [
 			{
 				"type": "text",
@@ -65,9 +65,10 @@ func TestAnthropicClient_GetConflictPrediction_Success(t *testing.T) {
 
 	// Override package-level newAnthropicClientFunc
 	originalNewAnthropicClientFunc := newAnthropicClientFunc
-	newAnthropicClientFunc = func(apiKey string, opts ...anthropic.ClientOption) *anthropic.Client {
+	newAnthropicClientFunc = func(apiKey string, opts ...option.RequestOption) *anthropic.Client {
 		// Create a client that points to the mock server
-		return anthropic.NewClient(apiKey, anthropic.WithBaseURL(server.URL))
+		c := anthropic.NewClient(append(opts, option.WithBaseURL(server.URL), option.WithAPIKey(apiKey))...)
+		return &c
 	}
 	defer func() { newAnthropicClientFunc = originalNewAnthropicClientFunc }()
 
@@ -87,8 +88,9 @@ func TestAnthropicClient_GetConflictPrediction_APIError(t *testing.T) {
 	defer server.Close()
 
 	originalNewAnthropicClientFunc := newAnthropicClientFunc
-	newAnthropicClientFunc = func(apiKey string, opts ...anthropic.ClientOption) *anthropic.Client {
-		return anthropic.NewClient(apiKey, anthropic.WithBaseURL(server.URL))
+	newAnthropicClientFunc = func(apiKey string, opts ...option.RequestOption) *anthropic.Client {
+		c := anthropic.NewClient(append(opts, option.WithBaseURL(server.URL), option.WithAPIKey(apiKey))...)
+		return &c
 	}
 	defer func() { newAnthropicClientFunc = originalNewAnthropicClientFunc }()
 
@@ -112,8 +114,9 @@ func TestAnthropicClient_GetConflictPrediction_NoContent(t *testing.T) {
 	defer server.Close()
 
 	originalNewAnthropicClientFunc := newAnthropicClientFunc
-	newAnthropicClientFunc = func(apiKey string, opts ...anthropic.ClientOption) *anthropic.Client {
-		return anthropic.NewClient(apiKey, anthropic.WithBaseURL(server.URL))
+	newAnthropicClientFunc = func(apiKey string, opts ...option.RequestOption) *anthropic.Client {
+		c := anthropic.NewClient(append(opts, option.WithBaseURL(server.URL), option.WithAPIKey(apiKey))...)
+		return &c
 	}
 	defer func() { newAnthropicClientFunc = originalNewAnthropicClientFunc }()
 
